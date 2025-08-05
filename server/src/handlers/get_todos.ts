@@ -1,11 +1,20 @@
 
+import { db } from '../db';
+import { todosTable } from '../db/schema';
 import { type Todo } from '../schema';
+import { eq, desc } from 'drizzle-orm';
 
 export async function getTodos(userId: string): Promise<Todo[]> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is to fetch all todo items for the authenticated user
-  // from the database using Drizzle ORM with proper filtering by userId.
-  // Should return an array of todos ordered by creation date.
-  
-  return Promise.resolve([]);
+  try {
+    const results = await db.select()
+      .from(todosTable)
+      .where(eq(todosTable.userId, userId))
+      .orderBy(desc(todosTable.createdAt))
+      .execute();
+
+    return results;
+  } catch (error) {
+    console.error('Failed to fetch todos:', error);
+    throw error;
+  }
 }

@@ -1,19 +1,45 @@
 
+import { db } from '../db';
+import { todosTable } from '../db/schema';
 import { type UpdateTodoInput, type Todo } from '../schema';
+import { eq, and } from 'drizzle-orm';
 
-export async function updateTodo(input: UpdateTodoInput, userId: string): Promise<Todo> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is to update an existing todo item for the authenticated user.
-  // Should verify the todo belongs to the user, update only provided fields,
-  // and return the updated todo with new updatedAt timestamp.
-  
-  return Promise.resolve({
-    id: input.id,
-    title: input.title || 'Sample Todo',
-    description: input.description || null,
-    completed: input.completed || false,
-    userId: userId,
-    createdAt: new Date(Date.now() - 86400000), // 1 day ago
-    updatedAt: new Date(),
-  } as Todo);
-}
+export const updateTodo = async (input: UpdateTodoInput, userId: string): Promise<Todo> => {
+  try {
+    // Build update object with only provided fields
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+
+    if (input.title !== undefined) {
+      updateData.title = input.title;
+    }
+
+    if (input.description !== undefined) {
+      updateData.description = input.description;
+    }
+
+    if (input.completed !== undefined) {
+      updateData.completed = input.completed;
+    }
+
+    // Update the todo - ensure it belongs to the user
+    const result = await db.update(todosTable)
+      .set(updateData)
+      .where(and(
+        eq(todosTable.id, input.id),
+        eq(todosTable.userId, userId)
+      ))
+      .returning()
+      .execute();
+
+    if (result.length === 0) {
+      throw new Error('Todo not found or access denied');
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error('Todo update failed:', error);
+    throw error;
+  }
+};

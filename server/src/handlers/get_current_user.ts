@@ -1,24 +1,43 @@
 
+import { db } from '../db';
+import { sessionsTable, usersTable } from '../db/schema';
 import { type User } from '../schema';
+import { eq, and, gt } from 'drizzle-orm';
 
 export async function getCurrentUser(sessionToken: string): Promise<User | null> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is to get the current authenticated user from session token.
-  // Should validate session token, check expiration, and return user data if valid.
-  // Should integrate with better-auth session management.
-  
-  if (!sessionToken) {
-    return null;
+  try {
+    if (!sessionToken) {
+      return null;
+    }
+
+    // Query for valid session with user data
+    const result = await db.select({
+      id: usersTable.id,
+      email: usersTable.email,
+      name: usersTable.name,
+      image: usersTable.image,
+      emailVerified: usersTable.emailVerified,
+      createdAt: usersTable.createdAt,
+      updatedAt: usersTable.updatedAt,
+    })
+      .from(sessionsTable)
+      .innerJoin(usersTable, eq(sessionsTable.userId, usersTable.id))
+      .where(
+        and(
+          eq(sessionsTable.token, sessionToken),
+          gt(sessionsTable.expiresAt, new Date()) // Session must not be expired
+        )
+      )
+      .limit(1)
+      .execute();
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error('Failed to get current user:', error);
+    throw error;
   }
-  
-  // Placeholder implementation - should validate actual session
-  return Promise.resolve({
-    id: 'user_sample',
-    email: 'user@example.com',
-    name: 'Sample User',
-    image: null,
-    emailVerified: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  } as User);
 }
